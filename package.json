@@ -1,0 +1,20 @@
+{
+  "name": "eu-news-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev",
+    "check": "node --check app.js && node --check api/news.js && node --check api/health.js && node --check lib/fetch-news.js && node --check lib/sources.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^44.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

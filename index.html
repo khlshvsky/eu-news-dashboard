@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>European News Feed</title>
+  <meta name="description" content="Простая лента европейских новостей: заголовок, источник, время публикации и ссылка на оригинал." />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=20260613-7" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">EU News Monitor</p>
+        <h1>Лента новостей</h1>
+        <p class="subtitle">Заголовок → источник → время публикации. Клик по заголовку открывает оригинальную новость.</p>
+      </div>
+      <div class="status-card" aria-live="polite">
+        <span class="status-dot" id="statusDot"></span>
+        <div>
+          <span class="status-label" id="statusLabel">Данные загружаются</span>
+          <span class="status-time" id="lastUpdated">—</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="controls" aria-label="Фильтры ленты">
+      <label class="search-box">
+        <span>Поиск</span>
+        <input id="searchInput" type="search" placeholder="BBC, Politico, Украина, выборы…" autocomplete="off" />
+      </label>
+
+      <label class="select-box">
+        <span>Источник</span>
+        <select id="sourceFilter">
+          <option value="all">Все источники</option>
+        </select>
+      </label>
+
+      <label class="select-box">
+        <span>Период</span>
+        <select id="timeFilter">
+          <option value="all">Все</option>
+          <option value="1">Последний час</option>
+          <option value="6">6 часов</option>
+          <option value="24">24 часа</option>
+        </select>
+      </label>
+
+      <button id="refreshBtn" class="refresh-btn" type="button">Обновить</button>
+    </section>
+
+    <section class="summary-grid" aria-label="Сводка">
+      <article class="metric-card">
+        <span class="metric-label">Новостей в ленте</span>
+        <strong id="totalCount">0</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Источников</span>
+        <strong id="sourceCount">0</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Автообновление</span>
+        <strong>10 мин</strong>
+      </article>
+    </section>
+
+    <section class="feed-panel">
+      <div class="feed-header">
+        <h2>Последние материалы</h2>
+        <span id="visibleCount">0 показано</span>
+      </div>
+      <div id="feedList" class="feed-list" aria-live="polite"></div>
+      <div id="emptyState" class="empty-state" hidden>
+        <strong>Ничего не найдено</strong>
+        <p>Попробуйте убрать фильтры или изменить поисковый запрос.</p>
+      </div>
+    </section>
+  </main>
+
+  <template id="newsItemTemplate">
+    <article class="news-item">
+      <div class="news-meta">
+        <span class="source"></span>
+        <time></time>
+      </div>
+      <a class="headline" href="#" target="_blank" rel="noopener noreferrer"></a>
+    </article>
+  </template>
+
+  <script src="app.js?v=20260613-7"></script>
+</body>
+</html>
