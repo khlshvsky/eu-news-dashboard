@@ -60,7 +60,10 @@
         </label>
       </div>
 
-      <button id="refreshBtn" class="refresh-btn" type="button">Обновить</button>
+      <div class="refresh-wrap">
+        <button id="refreshBtn" class="refresh-btn" type="button">Обновить</button>
+        <span id="newsBadge" class="news-badge" hidden></span>
+      </div>
     </section>
 
     <section class="summary-grid" aria-label="Сводка">
@@ -77,6 +80,8 @@
         <strong>10 мин</strong>
       </article>
     </section>
+
+    <section id="hotTopics" class="hot-topics" hidden aria-label="Горячие темы"></section>
 
     <section class="feed-panel">
       <div class="feed-header">
@@ -101,6 +106,7 @@
     </article>
   </template>
 
+  <button id="backToTop" class="back-to-top" aria-label="Наверх" hidden>↑</button>
   <script src="app.js?v=20260613-7"></script>
 </body>
 </html>
