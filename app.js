@@ -175,7 +175,7 @@ function getFilteredNews() {
 
 // ── Translation ──────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 50;
 
 async function translateBatch(items) {
   // items = [{url, title}, ...], translates via Claude API
@@ -191,7 +191,7 @@ async function translateBatch(items) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -217,9 +217,11 @@ async function ensureTranslations(items) {
   const ruLabel = labels[labels.length - 1];
   if (ruLabel) ruLabel.textContent = '…';
 
+  const batches = [];
   for (let i = 0; i < needed.length; i += BATCH_SIZE) {
-    await translateBatch(needed.slice(i, i + BATCH_SIZE));
+    batches.push(translateBatch(needed.slice(i, i + BATCH_SIZE)));
   }
+  await Promise.all(batches);
 
   if (ruLabel) ruLabel.textContent = 'RU';
   renderFeed();
@@ -228,6 +230,20 @@ async function ensureTranslations(items) {
 function getTitle(item) {
   if (translateMode && translationCache[item.url]) return translationCache[item.url];
   return item.title;
+}
+
+function getVisibleItems() {
+  const headlines = elements.feedList.querySelectorAll('.headline');
+  const visible = [];
+  const vBottom = window.innerHeight + window.scrollY + 200; // +200px запас
+  headlines.forEach(el => {
+    if (el.getBoundingClientRect().top + window.scrollY < vBottom) {
+      const url = el.href;
+      const item = getFilteredNews().find(i => i.url === url);
+      if (item) visible.push(item);
+    }
+  });
+  return visible;
 }
 
 function renderFeed() {
@@ -301,11 +317,27 @@ elements.translateToggle.addEventListener('change', async (e) => {
   translateMode = e.target.checked;
   if (translateMode) {
     renderFeed();
-    const visible = getFilteredNews();
+    // Сначала переводим видимые
+    const visible = getVisibleItems();
     await ensureTranslations(visible.map(i => ({ url: i.url, title: i.title })));
+    // Потом фоном остальные
+    const all = getFilteredNews();
+    ensureTranslations(all.map(i => ({ url: i.url, title: i.title })));
   } else {
     renderFeed();
   }
+});
+
+// При скролле подгружаем переводы для новых видимых статей
+let scrollTimer;
+window.addEventListener('scroll', () => {
+  if (!translateMode) return;
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    const visible = getVisibleItems();
+    const needed = visible.filter(i => !translationCache[i.url]);
+    if (needed.length) ensureTranslations(needed.map(i => ({ url: i.url, title: i.title })));
+  }, 300);
 });
 
 loadNews();
