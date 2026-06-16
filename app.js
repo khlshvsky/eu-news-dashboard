@@ -40,7 +40,10 @@ const elements = {
   visibleCount: document.querySelector('#visibleCount'),
   emptyState: document.querySelector('#emptyState'),
   newsBadge: document.querySelector('#newsBadge'),
-  hotTopics: document.querySelector('#hotTopics'),
+  aiSummary: document.querySelector('#aiSummary'),
+  summaryText: document.querySelector('#summaryText'),
+  summaryTime: document.querySelector('#summaryTime'),
+  summaryRefresh: document.querySelector('#summaryRefresh'),
   backToTop: document.querySelector('#backToTop'),
   statusDot: document.querySelector('#statusDot'),
   statusLabel: document.querySelector('#statusLabel'),
@@ -306,52 +309,125 @@ const SOURCE_OWNERSHIP = {
 };
 
 
-// ── Горячие темы ────────────────────────────────────────────────────────────
 
-const STOP_WORDS = new Set([
-  'the','a','an','and','or','but','in','on','at','to','for','of','with',
-  'as','by','from','is','are','was','were','be','been','has','have','had',
-  'that','this','it','its','not','over','after','says','say','will','new',
-  'amid','than','more','also','into','their','they','he','she',
-  'his','her','who','what','how','why','when','then','up','out',
-  'if','so','us','about','would','could','should','may','can',
-  'one','two','three','first','last','back','off','no','all','do','did',
-  'get','got','go','make','take','year','years','day','days','man','men',
-]);
+// ── AI Summary ───────────────────────────────────────────────────────────────
 
-function buildHotTopics(items) {
-  const freq = {};
-  items.forEach(item => {
-    item.title.toLowerCase()
-      .replace(/[''""«»„"]/g, '')
-      .split(/[\s\-–—,:;.!?()\[\]\/]+/)
-      .filter(w => w.length > 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w))
-      .forEach(w => { freq[w] = (freq[w] || 0) + 1; });
-  });
-  return Object.entries(freq)
-    .filter(([, n]) => n >= 3)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12)
-    .map(([word]) => word);
+const SUMMARY_STORAGE_KEY = 'aiSummary_v1';
+const SUMMARY_HOURS = 9; // обновлять в 9:00
+
+function getSummaryFromStorage() {
+  try {
+    const raw = localStorage.getItem(SUMMARY_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
 }
 
-function renderHotTopics(items) {
-  const topics = buildHotTopics(items);
-  const el = elements.hotTopics;
-  if (!topics.length) { el.hidden = true; return; }
-  el.innerHTML = '<span class="hot-label">🔥</span>' +
-    topics.map(t =>
-      `<button class="hot-tag" data-topic="${t}">${t}</button>`
-    ).join('');
-  el.hidden = false;
-  el.querySelectorAll('.hot-tag').forEach(btn => {
-    btn.addEventListener('click', () => {
-      elements.searchInput.value = btn.dataset.topic;
-      elements.searchInput.dispatchEvent(new Event('input'));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+function saveSummaryToStorage(text) {
+  const now = new Date();
+  localStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify({
+    text,
+    date: now.toDateString(),
+    time: now.toISOString()
+  }));
+}
+
+function isSummaryFresh(stored) {
+  if (!stored) return false;
+  const now = new Date();
+  const today9 = new Date(now);
+  today9.setHours(SUMMARY_HOURS, 0, 0, 0);
+  // Сводка свежая если: та же дата И сгенерирована после 9:00
+  // ИЛИ сейчас до 9:00 — тогда используем вчерашнюю если она есть
+  const storedDate = new Date(stored.time);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(SUMMARY_HOURS, 0, 0, 0);
+
+  if (now < today9) {
+    // До 9 утра — принимаем вчерашнюю после 9
+    return storedDate >= yesterday;
+  }
+  // После 9 утра — принимаем только сегодняшнюю после 9
+  return storedDate >= today9;
+}
+
+function formatSummaryTime(isoStr) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Europe/Belgrade'
+  }).format(new Date(isoStr));
+}
+
+function showSummary(text, timeStr) {
+  elements.summaryText.textContent = text;
+  elements.summaryTime.textContent = timeStr ? `(${timeStr})` : '';
+  elements.aiSummary.hidden = false;
+}
+
+async function generateSummary(forceRefresh = false) {
+  // Проверяем кэш
+  if (!forceRefresh) {
+    const stored = getSummaryFromStorage();
+    if (isSummaryFresh(stored)) {
+      showSummary(stored.text, formatSummaryTime(stored.time));
+      return;
+    }
+  }
+
+  // Нужна генерация
+  elements.summaryText.textContent = 'Генерирую сводку…';
+  elements.aiSummary.hidden = false;
+  elements.summaryTime.textContent = '';
+
+  // Берём статьи за последние 12 часов
+  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+  const recent = allNews.filter(i => i.publishedAt && new Date(i.publishedAt).getTime() > cutoff);
+  const headlines = recent.slice(0, 80).map(i => `- ${i.title} (${i.source})`).join('\n');
+
+  if (!headlines) {
+    elements.summaryText.textContent = 'Недостаточно данных для сводки.';
+    return;
+  }
+
+  const prompt = `Ты — редактор новостного дайджеста. На основе этих заголовков составь краткую сводку главных событий на русском языке — 5-6 предложений, без воды, только суть. Группируй по темам если нужно. Не используй маркированные списки, пиши сплошным текстом.
+
+Заголовки:
+${headlines}`;
+
+  try {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
-  });
+    const data = await res.json();
+    const text = data.content?.[0]?.text?.trim();
+    if (text) {
+      saveSummaryToStorage(text);
+      showSummary(text, formatSummaryTime(new Date().toISOString()));
+    } else {
+      elements.summaryText.textContent = 'Не удалось сгенерировать сводку.';
+    }
+  } catch (e) {
+    console.warn('Summary error:', e);
+    elements.summaryText.textContent = 'Ошибка при генерации сводки.';
+  }
 }
+
+// Планировщик: проверяем каждую минуту нужно ли обновить
+function scheduleSummary() {
+  setInterval(() => {
+    const stored = getSummaryFromStorage();
+    if (!isSummaryFresh(stored)) generateSummary();
+  }, 60 * 1000);
+}
+
 
 function renderFeed() {
   const filteredNews = getFilteredNews();
@@ -396,7 +472,6 @@ function renderFeed() {
   elements.totalCount.textContent = allNews.length;
   elements.sourceCount.textContent = uniqueSources.size;
   elements.visibleCount.textContent = `${filteredNews.length} показано`;
-  renderHotTopics(filteredNews);
 
   if (allNews.length === 0) {
     setEmptyState('Свежих новостей нет', 'Backend не нашёл материалов за выбранный период или API недоступен.');
@@ -471,3 +546,8 @@ elements.backToTop.addEventListener('click', () => {
 
 loadNews();
 setInterval(loadNews, AUTO_REFRESH_MS);
+
+// AI Summary
+generateSummary();
+scheduleSummary();
+document.querySelector('#summaryRefresh').addEventListener('click', () => generateSummary(true));
