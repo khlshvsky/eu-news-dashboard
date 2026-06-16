@@ -18,6 +18,8 @@ const fallbackNews = [
 ];
 
 let allNews = [];
+let prevNewsUrls = new Set();   // urls из предыдущей загрузки
+const readUrls = new Set();     // прочитанные статьи
 
 
 let translationCache = {};   // url → translated title
@@ -37,6 +39,9 @@ const elements = {
   sourceCount: document.querySelector('#sourceCount'),
   visibleCount: document.querySelector('#visibleCount'),
   emptyState: document.querySelector('#emptyState'),
+  newsBadge: document.querySelector('#newsBadge'),
+  hotTopics: document.querySelector('#hotTopics'),
+  backToTop: document.querySelector('#backToTop'),
   statusDot: document.querySelector('#statusDot'),
   statusLabel: document.querySelector('#statusLabel'),
   lastUpdated: document.querySelector('#lastUpdated')
@@ -96,7 +101,17 @@ async function loadNews(options = {}) {
     const items = Array.isArray(payload) ? payload : payload.items;
     if (!Array.isArray(items)) throw new Error('Invalid API payload');
 
-    allNews = sortByDateDesc(sanitizeItems(items));
+    const newItems = sortByDateDesc(sanitizeItems(items));
+    const isFirstLoad = allNews.length === 0;
+    if (!isFirstLoad && prevNewsUrls.size > 0) {
+      const newCount = newItems.filter(i => !prevNewsUrls.has(i.url)).length;
+      if (newCount > 0) {
+        elements.newsBadge.textContent = `+${newCount}`;
+        elements.newsBadge.hidden = false;
+      }
+    }
+    prevNewsUrls = new Set(newItems.map(i => i.url));
+    allNews = newItems;
     if (translateMode) {
       const visible = getFilteredNews();
       await ensureTranslations(visible.map(i => ({ url: i.url, title: i.title })));
@@ -260,8 +275,6 @@ const SOURCE_OWNERSHIP = {
   'NL Times':                   'private',
   'The Local France':           'private',
   'The Local Sweden':           'private',
-  'The Portugal News':          'private',
-  'Prague Morning':             'private',
   'Greek Reporter':             'private',
   'ERR News':                   'state',
   'LRT English':                'state',
@@ -280,7 +293,6 @@ const SOURCE_OWNERSHIP = {
   'CBS News':                   'private',
   'Radio Prague International': 'state',
   'Daily News Hungary':         'private',
-  'eKathimerini':               'private',
   'Ukrinform':                  'state',
   'Kyiv Independent':           'private',
   'The Kyiv Post':              'private',
@@ -289,12 +301,57 @@ const SOURCE_OWNERSHIP = {
   'Hurriyet Daily News':        'private',
   'TASS':                       'state',
   'South China Morning Post':   'mixed',
-  'The Washington Times':        'private',
-  'The Brussels Times':         'private',
   'Cyprus Mail':                'private',
-  'Delfi English':              'private',
   'The European Conservative':  'private',
 };
+
+
+// ── Горячие темы ────────────────────────────────────────────────────────────
+
+const STOP_WORDS = new Set([
+  'the','a','an','and','or','but','in','on','at','to','for','of','with',
+  'as','by','from','is','are','was','were','be','been','has','have','had',
+  'that','this','it','its','not','over','after','says','say','will','new',
+  'amid','than','more','also','into','their','they','he','she',
+  'his','her','who','what','how','why','when','then','up','out',
+  'if','so','us','about','would','could','should','may','can',
+  'one','two','three','first','last','back','off','no','all','do','did',
+  'get','got','go','make','take','year','years','day','days','man','men',
+]);
+
+function buildHotTopics(items) {
+  const freq = {};
+  items.forEach(item => {
+    item.title.toLowerCase()
+      .replace(/[''""«»„"]/g, '')
+      .split(/[\s\-–—,:;.!?()\[\]\/]+/)
+      .filter(w => w.length > 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w))
+      .forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  });
+  return Object.entries(freq)
+    .filter(([, n]) => n >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([word]) => word);
+}
+
+function renderHotTopics(items) {
+  const topics = buildHotTopics(items);
+  const el = elements.hotTopics;
+  if (!topics.length) { el.hidden = true; return; }
+  el.innerHTML = '<span class="hot-label">🔥</span>' +
+    topics.map(t =>
+      `<button class="hot-tag" data-topic="${t}">${t}</button>`
+    ).join('');
+  el.hidden = false;
+  el.querySelectorAll('.hot-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      elements.searchInput.value = btn.dataset.topic;
+      elements.searchInput.dispatchEvent(new Event('input'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
 
 function renderFeed() {
   const filteredNews = getFilteredNews();
@@ -327,6 +384,11 @@ function renderFeed() {
     headline.setAttribute('aria-label', `${getTitle(item)}. Источник: ${item.source}`);
 
     article.dataset.source = item.source;
+    if (readUrls.has(item.url)) article.classList.add('read');
+    headline.addEventListener('click', () => {
+      readUrls.add(item.url);
+      article.classList.add('read');
+    });
     elements.feedList.append(node);
   }
 
@@ -334,6 +396,7 @@ function renderFeed() {
   elements.totalCount.textContent = allNews.length;
   elements.sourceCount.textContent = uniqueSources.size;
   elements.visibleCount.textContent = `${filteredNews.length} показано`;
+  renderHotTopics(filteredNews);
 
   if (allNews.length === 0) {
     setEmptyState('Свежих новостей нет', 'Backend не нашёл материалов за выбранный период или API недоступен.');
@@ -369,7 +432,10 @@ function debounce(fn, delay = 180) {
 elements.searchInput.addEventListener('input', debounce(renderFeed));
 elements.sourceFilter.addEventListener('change', renderFeed);
 elements.timeFilter.addEventListener('change', renderFeed);
-elements.refreshBtn.addEventListener('click', () => loadNews({ force: true }));
+elements.refreshBtn.addEventListener('click', () => {
+  elements.newsBadge.hidden = true;
+  loadNews({ force: true });
+});
 elements.translateToggle.addEventListener('change', async (e) => {
   translateMode = e.target.checked;
   if (translateMode) {
@@ -385,9 +451,12 @@ elements.translateToggle.addEventListener('change', async (e) => {
   }
 });
 
-// При скролле подгружаем переводы для новых видимых статей
+// ── Scroll: переводы + кнопка наверх ────────────────────────────────────────
 let scrollTimer;
 window.addEventListener('scroll', () => {
+  // Кнопка наверх
+  elements.backToTop.hidden = window.scrollY < 400;
+  // Подгрузка переводов для видимых
   if (!translateMode) return;
   clearTimeout(scrollTimer);
   scrollTimer = setTimeout(() => {
@@ -395,6 +464,9 @@ window.addEventListener('scroll', () => {
     const needed = visible.filter(i => !translationCache[i.url]);
     if (needed.length) ensureTranslations(needed.map(i => ({ url: i.url, title: i.title })));
   }, 300);
+}, { passive: true });
+elements.backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 loadNews();
