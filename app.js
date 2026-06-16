@@ -289,6 +289,10 @@ const SOURCE_OWNERSHIP = {
   'Hurriyet Daily News':        'private',
   'TASS':                       'state',
   'South China Morning Post':   'mixed',
+  'The Washington Times':        'private',
+  'The Brussels Times':         'private',
+  'Cyprus Mail':                'private',
+  'Delfi English':              'private',
   'The European Conservative':  'private',
 };
 
