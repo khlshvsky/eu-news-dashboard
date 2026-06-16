@@ -246,6 +246,52 @@ function getVisibleItems() {
   return visible;
 }
 
+
+const SOURCE_OWNERSHIP = {
+  'The Guardian':               'private',
+  'Sky News':                   'private',
+  'The Independent':            'private',
+  'Channel 4 News':             'state',
+  'Euronews':                   'private',
+  'Deutsche Welle':             'state',
+  'France 24':                  'state',
+  'Le Monde':                   'private',
+  'AP News':                    'private',
+  'NL Times':                   'private',
+  'The Local France':           'private',
+  'The Local Sweden':           'private',
+  'The Portugal News':          'private',
+  'Prague Morning':             'private',
+  'Greek Reporter':             'private',
+  'ERR News':                   'state',
+  'LRT English':                'state',
+  'LSM English':                'state',
+  'Notes from Poland':          'private',
+  'BBC World News':             'state',
+  'The Hill':                   'private',
+  'The Straits Times':          'mixed',
+  'The Japan Times':            'private',
+  'Middle East Eye':            'private',
+  'The Moscow Times':           'private',
+  'The Irish Times':            'private',
+  'CBC News':                   'state',
+  'Global News':                'private',
+  'Al Jazeera':                 'state',
+  'CBS News':                   'private',
+  'Radio Prague International': 'state',
+  'Daily News Hungary':         'private',
+  'eKathimerini':               'private',
+  'Ukrinform':                  'state',
+  'Kyiv Independent':           'private',
+  'The Kyiv Post':              'private',
+  'Interfax Ukraine':           'private',
+  'Arab News':                  'mixed',
+  'Hurriyet Daily News':        'private',
+  'TASS':                       'state',
+  'South China Morning Post':   'mixed',
+  'The European Conservative':  'private',
+};
+
 function renderFeed() {
   const filteredNews = getFilteredNews();
   elements.feedList.innerHTML = '';
@@ -258,6 +304,13 @@ function renderFeed() {
     const headline = node.querySelector('.headline');
 
     source.textContent = item.source;
+    const ownerType = SOURCE_OWNERSHIP[item.source];
+    if (ownerType) {
+      const badge = document.createElement('span');
+      badge.className = `ownership-badge ownership-${ownerType}`;
+      badge.textContent = ownerType === 'state' ? 'Государственный' : ownerType === 'mixed' ? 'Частично государственный' : 'Частный';
+      source.appendChild(badge);
+    }
     time.textContent = formatDateTime(item.publishedAt);
     if (item.publishedAt) {
       time.dateTime = item.publishedAt;
