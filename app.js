@@ -18,6 +18,11 @@ const fallbackNews = [
 ];
 
 let allNews = [];
+
+
+let translationCache = {};   // url → translated title
+let translateMode = false;   // current toggle state
+let translatePending = false; // debounce flag
 let isLoading = false;
 
 const elements = {
@@ -91,6 +96,10 @@ async function loadNews(options = {}) {
     if (!Array.isArray(items)) throw new Error('Invalid API payload');
 
     allNews = sortByDateDesc(sanitizeItems(items));
+    if (translateMode) {
+      const visible = getFilteredNews();
+      await ensureTranslations(visible.map(i => ({ url: i.url, title: i.title })));
+    }
 
     if (allNews.length === 0) {
       setStatus('ok', 'Свежих новостей нет');
@@ -163,6 +172,63 @@ function getFilteredNews() {
   });
 }
 
+// ── Translation ──────────────────────────────────────────────────────────────
+
+const BATCH_SIZE = 40;
+
+async function translateBatch(items) {
+  // items = [{url, title}, ...], translates via Claude API
+  const toTranslate = items.filter(i => !translationCache[i.url]);
+  if (!toTranslate.length) return;
+
+  const numbered = toTranslate.map((item, idx) => `${idx + 1}. ${item.title}`).join('\n');
+  const prompt = `Переведи на русский язык следующие новостные заголовки. Верни ТОЛЬКО JSON-объект вида {"1": "перевод", "2": "перевод", ...} без пояснений и обёрток:\n\n${numbered}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '{}';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const map = JSON.parse(clean);
+    toTranslate.forEach((item, idx) => {
+      const t = map[String(idx + 1)];
+      if (t) translationCache[item.url] = t;
+    });
+  } catch (e) {
+    console.warn('Translation error:', e);
+  }
+}
+
+async function ensureTranslations(items) {
+  const needed = items.filter(i => !translationCache[i.url]);
+  if (!needed.length) return;
+
+  // show loading indicator on toggle RU label
+  const labels = document.querySelectorAll('.toggle-lang');
+  const ruLabel = labels[labels.length - 1];
+  if (ruLabel) ruLabel.textContent = '…';
+
+  for (let i = 0; i < needed.length; i += BATCH_SIZE) {
+    await translateBatch(needed.slice(i, i + BATCH_SIZE));
+  }
+
+  if (ruLabel) ruLabel.textContent = 'RU';
+  renderFeed();
+}
+
+function getTitle(item) {
+  if (translateMode && translationCache[item.url]) return translationCache[item.url];
+  return item.title;
+}
+
 function renderFeed() {
   const filteredNews = getFilteredNews();
   elements.feedList.innerHTML = '';
@@ -182,9 +248,9 @@ function renderFeed() {
       time.removeAttribute('datetime');
     }
 
-    headline.textContent = item.title;
+    headline.textContent = getTitle(item);
     headline.href = item.url;
-    headline.setAttribute('aria-label', `${item.title}. Источник: ${item.source}`);
+    headline.setAttribute('aria-label', `${getTitle(item)}. Источник: ${item.source}`);
 
     article.dataset.source = item.source;
     elements.feedList.append(node);
@@ -214,7 +280,7 @@ function formatDateTime(value) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Berlin'  // CET (UTC+1) / CEST (UTC+2)
+    timeZone: 'Europe/Belgrade'
   }).format(date);
 }
 
