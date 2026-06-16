@@ -29,6 +29,7 @@ const elements = {
   feedList: document.querySelector('#feedList'),
   template: document.querySelector('#newsItemTemplate'),
   searchInput: document.querySelector('#searchInput'),
+  translateToggle: document.querySelector('#translateToggle'),
   sourceFilter: document.querySelector('#sourceFilter'),
   timeFilter: document.querySelector('#timeFilter'),
   refreshBtn: document.querySelector('#refreshBtn'),
@@ -296,6 +297,16 @@ elements.searchInput.addEventListener('input', debounce(renderFeed));
 elements.sourceFilter.addEventListener('change', renderFeed);
 elements.timeFilter.addEventListener('change', renderFeed);
 elements.refreshBtn.addEventListener('click', () => loadNews({ force: true }));
+elements.translateToggle.addEventListener('change', async (e) => {
+  translateMode = e.target.checked;
+  if (translateMode) {
+    renderFeed();
+    const visible = getFilteredNews();
+    await ensureTranslations(visible.map(i => ({ url: i.url, title: i.title })));
+  } else {
+    renderFeed();
+  }
+});
 
 loadNews();
 setInterval(loadNews, AUTO_REFRESH_MS);
