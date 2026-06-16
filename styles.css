@@ -542,39 +542,63 @@ button:focus-visible,
   opacity: 0.6;
 }
 
-/* Горячие темы */
-.hot-topics {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 0;
-  border-bottom: 0.5px solid var(--color-border-tertiary);
-  margin-bottom: 4px;
+
+
+/* ── AI Summary ─────────────────────────────────────────────────────────────── */
+.ai-summary {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
 }
 
-.hot-label {
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ai-summary-icon {
+  color: #2563eb;
   font-size: 14px;
   flex-shrink: 0;
 }
 
-.hot-tag {
-  font-size: 12px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 20px;
-  border: 0.5px solid var(--color-border-secondary);
-  background: var(--color-background-secondary);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
+.ai-summary-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  flex: 1;
 }
 
-.hot-tag:hover {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
+.ai-summary-time {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.ai-summary-refresh {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.15s, transform 0.3s;
+  flex-shrink: 0;
+}
+
+.ai-summary-refresh:hover {
+  color: #2563eb;
+  transform: rotate(180deg);
+}
+
+.ai-summary-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--color-text-primary);
 }
 
 /* Кнопка Наверх */
