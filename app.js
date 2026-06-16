@@ -142,6 +142,11 @@ async function loadNews(options = {}) {
     isLoading = false;
     elements.refreshBtn.disabled = false;
     elements.refreshBtn.textContent = 'Обновить';
+    // Генерируем сводку только при первой загрузке
+    if (prevNewsUrls.size > 0 && !window._summaryInitialized) {
+      window._summaryInitialized = true;
+      generateSummary();
+    }
   }
 }
 
@@ -382,7 +387,7 @@ async function generateSummary(forceRefresh = false) {
   elements.summaryTime.textContent = '';
 
   // Берём статьи за последние 12 часов
-  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   const recent = allNews.filter(i => i.publishedAt && new Date(i.publishedAt).getTime() > cutoff);
   const headlines = recent.slice(0, 80).map(i => `- ${i.title} (${i.source})`).join('\n');
 
@@ -391,7 +396,7 @@ async function generateSummary(forceRefresh = false) {
     return;
   }
 
-  const prompt = `Ты — редактор новостного дайджеста. На основе этих заголовков составь краткую сводку главных событий на русском языке — 5-6 предложений, без воды, только суть. Группируй по темам если нужно. Не используй маркированные списки, пиши сплошным текстом.
+  const prompt = `Составь сводку главных событий на русском языке — 5-6 предложений. Только факты: кто, что, где. Никаких оценок, эпитетов, вводных слов («таким образом», «следует отметить», «в условиях» и т.п.). Никаких списков — только сплошной текст. Каждое предложение — отдельный факт.
 
 Заголовки:
 ${headlines}`;
@@ -547,7 +552,6 @@ elements.backToTop.addEventListener('click', () => {
 loadNews();
 setInterval(loadNews, AUTO_REFRESH_MS);
 
-// AI Summary
-generateSummary();
+// AI Summary — запускается после первой загрузки
 scheduleSummary();
 document.querySelector('#summaryRefresh').addEventListener('click', () => generateSummary(true));
