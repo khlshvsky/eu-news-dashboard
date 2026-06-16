@@ -185,7 +185,7 @@ async function translateBatch(items) {
   const prompt = `Переведи на русский язык следующие новостные заголовки. Верни ТОЛЬКО JSON-объект вида {"1": "перевод", "2": "перевод", ...} без пояснений и обёрток:\n\n${numbered}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
