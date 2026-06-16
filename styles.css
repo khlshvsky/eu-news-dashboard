@@ -546,25 +546,24 @@ button:focus-visible,
 
 /* ── AI Summary ─────────────────────────────────────────────────────────────── */
 .ai-summary {
+  position: relative;
   background: var(--color-background-secondary);
   border: 0.5px solid var(--color-border-secondary);
   border-radius: 12px;
-  padding: 16px 20px;
+  padding: 18px 20px 20px;
   margin-bottom: 20px;
 }
 
 .ai-summary-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: nowrap;
-  min-width: 0;
+  gap: 7px;
+  margin-bottom: 12px;
 }
 
 .ai-summary-icon {
   color: #2563eb;
-  font-size: 14px;
+  font-size: 13px;
   flex-shrink: 0;
 }
 
@@ -572,39 +571,44 @@ button:focus-visible,
   font-size: 13px;
   font-weight: 700;
   color: var(--color-text-primary);
-  white-space: nowrap;
-  flex-shrink: 0;
+  letter-spacing: 0.01em;
 }
 
 .ai-summary-time {
   font-size: 11px;
   color: var(--color-text-secondary);
-  flex: 1;
-  min-width: 0;
-}
-
-.ai-summary-refresh {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0 2px;
-  line-height: 1;
-  transition: color 0.15s, transform 0.3s;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.ai-summary-refresh:hover {
-  color: #2563eb;
-  transform: rotate(180deg);
+  margin-left: 4px;
 }
 
 .ai-summary-text {
   font-size: 14px;
-  line-height: 1.65;
+  line-height: 1.7;
   color: var(--color-text-primary);
+  padding-right: 52px;
+}
+
+.ai-summary-refresh {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: none;
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.4s;
+  box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+}
+
+.ai-summary-refresh:hover {
+  background: #1d4ed8;
+  transform: rotate(180deg);
 }
 
 /* Кнопка Наверх */
